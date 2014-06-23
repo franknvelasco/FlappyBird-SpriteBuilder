@@ -47,6 +47,8 @@
     NSTimeInterval _sinceTouch;
     
     NSMutableArray *_obstacles;
+    NSMutableArray *_obstaclesToAdd;
+    int jitterAmount;
     
     CCButton *_restartButton;
     
@@ -149,11 +151,28 @@
 #pragma mark - Obstacle Spawning
 
 - (void)addObstacle {
-    Obstacle *obstacle = (Obstacle *)[CCBReader load:@"Obstacle"];
-    CGPoint screenPosition = [self convertToWorldSpace:ccp(380, 0)];
+    if (_obstaclesToAdd.count == 0) {
+        // randomly select from the three pair options we have
+        int random = arc4random_uniform(3) + 1;
+        CCNode *obstaclePair = [CCBReader load:
+                                [NSString stringWithFormat:@"ObstaclePair%i", random]];
+        _obstaclesToAdd = [NSMutableArray arrayWithArray:[obstaclePair children]];
+        [obstaclePair removeAllChildren];
+        [obstaclePair runAction:[CCActionRemove action]];
+        
+        // rejitter
+        jitterAmount = arc4random_uniform(120) - 60;
+    }
+    
+    Obstacle *obstacle = (Obstacle*)_obstaclesToAdd[0];
+    [_obstaclesToAdd removeObjectAtIndex:0];
+    [obstacle removeFromParent];
+    CGPoint screenPosition = [self convertToWorldSpace:
+                              ccp(380, obstacle.position.y +
+                                  [[CCDirector sharedDirector] viewSize].height/2 +
+                                  _ground1.contentSize.height/2 + jitterAmount)];
     CGPoint worldPosition = [physicsNode convertToNodeSpace:screenPosition];
     obstacle.position = worldPosition;
-    [obstacle setupRandomPosition];
     obstacle.zOrder = DrawingOrderPipes;
     [physicsNode addChild:obstacle];
     [_obstacles addObject:obstacle];
